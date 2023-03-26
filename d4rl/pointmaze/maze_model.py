@@ -81,6 +81,20 @@ def point_maze(maze_str):
 
     return mjcmodel
 
+CUSTOM_MAZE = \
+    "#############\\"+\
+    "####G#G#G####\\"+\
+    "####O#O#O####\\"+\
+    "####OOOOO####\\"+\
+    "#G#G##O##GOG#\\"+\
+    "#O#O##O###O##\\"+\
+    "#OOOOOGOOOO##\\"+\
+    "##O###O###O##\\"+\
+    "##G##OO###OG#\\"+\
+    "#####O#######\\"+\
+    "####OOOOO####\\"+\
+    "####GOOOG####\\"+\
+    "#############"
 
 LARGE_MAZE = \
         "############\\"+\
@@ -158,6 +172,7 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
                  maze_spec=U_MAZE,
                  reward_type='dense',
                  reset_target=False,
+                 reset_at_goals_only=False,
                  **kwargs):
         offline_env.OfflineEnv.__init__(self, **kwargs)
 
@@ -165,7 +180,12 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
         self.str_maze_spec = maze_spec
         self.maze_arr = parse_maze(maze_spec)
         self.reward_type = reward_type
-        self.reset_locations = list(zip(*np.where(self.maze_arr == EMPTY)))
+        self.reset_at_goals_only = reset_at_goals_only
+        self.goal_locations = list(zip(*np.where(self.maze_arr == GOAL)))
+        if reset_at_goals_only:
+            self.reset_locations = self.goal_locations
+        else:
+            self.reset_locations = list(zip(*np.where(self.maze_arr == EMPTY)))
         self.reset_locations.sort()
 
         self._target = np.array([0.0,0.0])
@@ -177,15 +197,18 @@ class MazeEnv(mujoco_env.MujocoEnv, utils.EzPickle, offline_env.OfflineEnv):
 
         # Set the default goal (overriden by a call to set_target)
         # Try to find a goal if it exists
-        self.goal_locations = list(zip(*np.where(self.maze_arr == GOAL)))
-        if len(self.goal_locations) == 1:
+        if len(self.goal_locations) == 1 or reset_at_goals_only:
             self.set_target(self.goal_locations[0])
         elif len(self.goal_locations) > 1:
-            raise ValueError("More than 1 goal specified!")
+            pass
+            #raise ValueError("More than 1 goal specified!")
         else:
             # If no goal, use the first empty tile
             self.set_target(np.array(self.reset_locations[0]).astype(self.observation_space.dtype))
-        self.empty_and_goal_locations = self.reset_locations + self.goal_locations
+        if reset_at_goals_only:
+            self.empty_and_goal_locations = self.goal_locations
+        else:
+            self.empty_and_goal_locations = self.reset_locations + self.goal_locations
 
     def step(self, action):
         action = np.clip(action, -1.0, 1.0)
