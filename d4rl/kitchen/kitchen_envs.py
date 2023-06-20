@@ -87,8 +87,7 @@ class KitchenBase(KitchenTaskRelaxV1, OfflineEnv):
         return obs, reward, done, env_info
 
     def render(self, mode='human'):
-        # Disable rendering to speed up environment evaluation.
-        return []
+        return super().render(mode=mode)
 
 
 class KitchenMicrowaveKettleLightSliderV0(KitchenBase):
